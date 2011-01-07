@@ -1,0 +1,11 @@
+application: bookmarktodesktop
+version: 2
+runtime: python
+api_version: 1
+
+handlers:
+- url: /.*
+  script: bookmarktodesktop.py
+builtins:
+- datastore_admin: on
+- remote_api: on
