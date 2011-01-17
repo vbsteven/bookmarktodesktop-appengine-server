@@ -78,8 +78,10 @@ def checkLogin(username=None, password=None):
 # does nothing more than showing a text string
 class MainPage(webapp.RequestHandler):
     def get(self):
-        self.response.headers['Content-Type'] = 'text/plain'
-        self.response.out.write('Bookmark to Desktop app')
+        template_values = {'value': 1, }
+
+        path = os.path.join(os.path.dirname(__file__), 'index.html')
+        self.response.out.write(template.render(path, template_values))
 
 # creates a new user
 class CreateUser(webapp.RequestHandler):
