@@ -217,11 +217,16 @@ class Addons(webapp.RequestHandler):
 
 application = webapp.WSGIApplication([('/', MainPage),
                                       ('/createuser', CreateUser),
+				      ('/api/createuser', CreateUser),
                                       ('/addbookmark', AddBookmark),
+				      ('/api/addbookmark', AddBookmark),
                                       ('/fetchbookmarks', FetchBookmarks),
-				                      ('/requesttoken', RequestToken),
-				                      ('/checklogin', CheckLogin),
-				                      ('/addons', Addons),
+				      ('/api/fetchbookmarks', FetchBookmarks),
+                                      ('/requesttoken', RequestToken),
+				      ('/api/requesttoken', RequestToken),
+                                      ('/checklogin', CheckLogin),
+				      ('/api/checklogin', CheckLogin),
+		                      ('/addons', Addons),
                                       ], debug=True)
 
 
