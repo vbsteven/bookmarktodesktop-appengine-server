@@ -1,0 +1,7 @@
+indexes:
+
+- kind: Bookmark
+  properties:
+  - name: user
+  - name: date
+    direction: desc
