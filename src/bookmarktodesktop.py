@@ -52,7 +52,23 @@ def usernameAvailable(username):
 
 def calculateHash(username, password):
     return md5.new(username+":"+password).hexdigest()
+
+def checkUser(username=None):
+    if username is None:
+        return None
+    if username == '':
+        return None
     
+    users = db.GqlQuery("SELECT * FROM User WHERE username = :1", username)
+    if users is None:
+        return None
+    if users.count() <= 0:
+        return None
+
+    return users[0]
+
+
+
 def checkLogin(username=None, password=None):
     password = calculateHash(username, password)
     
@@ -72,6 +88,10 @@ def checkLogin(username=None, password=None):
         return None
     
     return users[0]
+
+
+def getBookmarksFromUser(user):
+    return db.GqlQuery("SELECT * FROM Bookmark WHERE user = :1 ORDER BY date DESC LIMIT 20", user)
 
 ## Pages ##
 
@@ -214,6 +234,43 @@ class Addons(webapp.RequestHandler):
         self.response.out.write(template.render(path, template_values))
 
 
+# creates rss feed from a users shared links
+class RssFeed(webapp.RequestHandler):
+    def get(self):
+        self.response.headers['Content-Type'] = 'text/xml'
+	username = self.request.get('username')
+	key = self.request.get('key')
+
+        user = checkUser(username)
+	if user is None:
+	    self.response.out.write('NOUSER')
+	    return
+        if user.password != key:
+	    self.response.out.write('AUTHFAIL')
+	    return
+
+	bookmarks = getBookmarksFromUser(user)
+
+        rss = "<?xml version=\"1.0\" ?>"
+        rss += "<rss version=\"2.0\">"
+        rss += "<channel>"
+        rss += "<title>Bookmark to Desktop feed for " + username + "</title>"
+        rss += "<link>http://bookmarktodesktop.appspot.com</link>"
+        rss += "<description>List of items " + username + " shared with Bookmark to Desktop</description>"
+
+        for bm in bookmarks:
+            rss += "<item>"
+            rss += "<title>" + bm.title + "</title>"
+            rss += "<link>" + bm.url + "</link>"
+            rss += "<description>" + bm.url + "</description>"
+            rss += "</item>"
+
+        rss += "</channel>"
+	rss += "</rss>"
+
+        self.response.out.write(rss)
+	return
+
 
 application = webapp.WSGIApplication([('/', MainPage),
                                       ('/createuser', CreateUser),
@@ -227,6 +284,7 @@ application = webapp.WSGIApplication([('/', MainPage),
                                       ('/checklogin', CheckLogin),
 				      ('/api/checklogin', CheckLogin),
 		                      ('/addons', Addons),
+				      ('/rss', RssFeed),
                                       ], debug=True)
 
 
