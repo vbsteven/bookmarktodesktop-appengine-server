@@ -236,10 +236,16 @@ class Addons(webapp.RequestHandler):
 
 # creates rss feed from a users shared links
 class RssFeed(webapp.RequestHandler):
-    def get(self):
-        self.response.headers['Content-Type'] = 'text/xml'
-	username = self.request.get('username')
-	key = self.request.get('key')
+    def get(self, path):
+        self.response.headers['Content-Type'] = 'text/plain'
+
+        pieces = path.split('/')
+	if len(pieces) != 2:
+            self.response.out.write('INCORRECTURL')
+            return
+
+	username = pieces[0]
+	key = pieces[1]
 
         user = checkUser(username)
 	if user is None:
@@ -251,6 +257,7 @@ class RssFeed(webapp.RequestHandler):
 
 	bookmarks = getBookmarksFromUser(user)
 
+        self.response.headers['Content-Type'] = 'text/xml'
         rss = "<?xml version=\"1.0\" ?>"
         rss += "<rss version=\"2.0\">"
         rss += "<channel>"
@@ -284,7 +291,7 @@ application = webapp.WSGIApplication([('/', MainPage),
                                       ('/checklogin', CheckLogin),
 				      ('/api/checklogin', CheckLogin),
 		                      ('/addons', Addons),
-				      ('/rss', RssFeed),
+				      (r'/rss/(.*)', RssFeed),
                                       ], debug=True)
 
 
