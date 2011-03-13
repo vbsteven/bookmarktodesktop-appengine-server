@@ -25,6 +25,7 @@ from google.appengine.api import channel
 import datetime
 import os
 import md5
+from django.utils import simplejson as json
 
 ## Entities ##
 
@@ -92,6 +93,9 @@ def checkLogin(username=None, password=None):
 
 def getBookmarksFromUser(user):
     return db.GqlQuery("SELECT * FROM Bookmark WHERE user = :1 ORDER BY date DESC LIMIT 20", user)
+
+def getAllBookmarksFromUser(user):
+    return db.GqlQuery("SELECT * FROM Bookmark WHERE user = :1 ORDER BY date DESC", user)
 
 ## Pages ##
 
@@ -278,6 +282,33 @@ class RssFeed(webapp.RequestHandler):
         self.response.out.write(rss)
 	return
 
+class ExportJson(webapp.RequestHandler):
+    def get(self, path):
+        self.response.headers['Content-Type'] = 'text/plain'
+
+	pieces = path.split('/')
+	if len(pieces) != 2:
+	    self.response.out.write('INCORRECTURL')
+	    return
+	
+	username = pieces[0]
+	key = pieces[1]
+
+	user = checkUser(username)
+	if user is None:
+	    self.response.out.write('NOUSER')
+	    return
+	if user.password != key:
+	    self.response.out.write('AUTHFAIL')
+	    return
+	
+	bookmarks = getAllBookmarksFromUser(user)
+	
+	#self.response.headers['Content-type'] = 'text/json'
+	txt = json.dumps(bookmarks)
+	self.response.out.write(txt)
+	return
+
 
 application = webapp.WSGIApplication([('/', MainPage),
                                       ('/createuser', CreateUser),
@@ -292,6 +323,7 @@ application = webapp.WSGIApplication([('/', MainPage),
 				      ('/api/checklogin', CheckLogin),
 		                      ('/addons', Addons),
 				      (r'/rss/(.*)', RssFeed),
+				      (r'/export/json/(.*)', ExportJson),
                                       ], debug=True)
 
 
