@@ -52,7 +52,7 @@ def usernameAvailable(username):
     return False
 
 def calculateHash(username, password):
-    return md5.new(username+":"+password).hexdigest()
+    return md5.new(username + ":" + password).hexdigest()
 
 def checkUser(username=None):
     if username is None:
@@ -277,37 +277,37 @@ class RssFeed(webapp.RequestHandler):
             rss += "</item>"
 
         rss += "</channel>"
-	rss += "</rss>"
+    rss += "</rss>"
 
         self.response.out.write(rss)
-	return
+    return
 
 class ExportJson(webapp.RequestHandler):
     def get(self, path):
         self.response.headers['Content-Type'] = 'text/plain'
 
-	pieces = path.split('/')
-	if len(pieces) != 2:
-	    self.response.out.write('INCORRECTURL')
-	    return
-	
-	username = pieces[0]
-	key = pieces[1]
+    pieces = path.split('/')
+    if len(pieces) != 2:
+        self.response.out.write('INCORRECTURL')
+        return
+    
+    username = pieces[0]
+    key = pieces[1]
 
-	user = checkUser(username)
-	if user is None:
-	    self.response.out.write('NOUSER')
-	    return
-	if user.password != key:
-	    self.response.out.write('AUTHFAIL')
-	    return
-	
-	bookmarks = getAllBookmarksFromUser(user)
-	
-	#self.response.headers['Content-type'] = 'text/json'
-	txt = json.dumps(bookmarks)
-	self.response.out.write(txt)
-	return
+    user = checkUser(username)
+    if user is None:
+        self.response.out.write('NOUSER')
+        return
+    if user.password != key:
+        self.response.out.write('AUTHFAIL')
+        return
+
+    bookmarks = getAllBookmarksFromUser(user)
+
+    #self.response.headers['Content-type'] = 'text/json'
+    txt = json.dumps(bookmarks)
+    self.response.out.write(txt)
+    return
 
 
 application = webapp.WSGIApplication([('/', MainPage),
