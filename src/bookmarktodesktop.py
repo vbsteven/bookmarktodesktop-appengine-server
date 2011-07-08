@@ -26,6 +26,8 @@ import datetime
 import os
 import md5
 from django.utils import simplejson as json
+from c2dm import C2DM
+from settings import clientAuth, collapseKey
 
 ## Entities ##
 
@@ -33,12 +35,18 @@ class User(db.Model):
     username = db.StringProperty()
     password = db.StringProperty()
     date = db.DateTimeProperty()
+    devicetoken = db.StringProperty()
 
 class Bookmark(db.Model):
     user = db.ReferenceProperty(User)
     url = db.StringProperty()
     title = db.StringProperty()
     fetched = db.BooleanProperty()
+    date = db.DateTimeProperty()
+
+class IncomingBookmark(db.Model):
+    user = db.ReferenceProperty(User)
+    url = db.StringProperty()
     date = db.DateTimeProperty()
 
 ## Utility methods ##
@@ -109,7 +117,9 @@ class MainPage(webapp.RequestHandler):
 
 # creates a new user
 class CreateUser(webapp.RequestHandler):
-    
+    def get(self):
+        return self.post()
+
     def post(self):
         self.response.headers['Content-Type'] = 'text/plain'
         
@@ -277,38 +287,109 @@ class RssFeed(webapp.RequestHandler):
             rss += "</item>"
 
         rss += "</channel>"
-    rss += "</rss>"
+        rss += "</rss>"
 
         self.response.out.write(rss)
-    return
+        return
 
 class ExportJson(webapp.RequestHandler):
     def get(self, path):
         self.response.headers['Content-Type'] = 'text/plain'
 
-    pieces = path.split('/')
-    if len(pieces) != 2:
-        self.response.out.write('INCORRECTURL')
-        return
+        pieces = path.split('/')
+        if len(pieces) != 2:
+            self.response.out.write('INCORRECTURL')
+            return
     
-    username = pieces[0]
-    key = pieces[1]
+        username = pieces[0]
+        key = pieces[1]
 
-    user = checkUser(username)
-    if user is None:
-        self.response.out.write('NOUSER')
+        user = checkUser(username)
+        if user is None:
+            self.response.out.write('NOUSER')
+            return
+        if user.password != key:
+            self.response.out.write('AUTHFAIL')
+            return
+
+        bookmarks = getAllBookmarksFromUser(user)
+
+       #self.response.headers['Content-type'] = 'text/json'
+        txt = json.dumps(bookmarks)
+        self.response.out.write(txt)
         return
-    if user.password != key:
-        self.response.out.write('AUTHFAIL')
-        return
 
-    bookmarks = getAllBookmarksFromUser(user)
 
-    #self.response.headers['Content-type'] = 'text/json'
-    txt = json.dumps(bookmarks)
-    self.response.out.write(txt)
-    return
+# sends a C2DM message to the client
+def sendC2DM(devicetoken, url):
+    c2dm = C2DM()
+    c2dm.registrationId = devicetoken
+    c2dm.collapseKey = collapseKey
+    c2dm.clientAuth = clientAuth
+    return c2dm.sendMessage(url)
 
+
+# sends the given link to the phone for this user
+class SendToPhone(webapp.RequestHandler):
+    def get(self):
+        return self.post()
+
+    def post(self):
+        self.response.headers['Content-Type'] = 'text/plain'
+        username = self.request.get('username')
+        password = self.request.get('password')
+        url = self.request.get('url')
+
+        user = checkLogin(username, password)
+        if user is None:
+            self.response.out.write('INVALIDLOGIN')
+            return
+        if url is None:
+            self.response.out.write('INVALIDURL')
+            return
+        if url == '':
+            self.response.out.write('INVALIDURL')
+            return
+
+        if user.devicetoken == None:
+            self.response.out.write('NODEVICETOKEN')
+
+        bm = IncomingBookmark()
+        bm.user = user
+        bm.url = url
+        bm.date = datetime.datetime.utcnow()
+        bm.save()
+
+        result = sendC2DM(user.devicetoken, url)
+        self.response.out.write('SUCCESS')
+
+class RegisterDeviceId(webapp.RequestHandler):
+    def get(self):
+        return self.post()
+
+    def post(self):
+        self.response.headers['Content-Type'] = 'text/plain'
+        username = self.request.get('username')
+        password = self.request.get('password')
+        deviceid = self.request.get('deviceid')
+
+        user = checkLogin(username, password)
+        if user is None:
+            self.response.out.write('INVALIDLOGIN')
+            return
+        if deviceid is None:
+            self.response.out.write('INVALIDTOKEN')
+            return
+        if deviceid == '':
+            self.response.out.write('INVALIDTOKEN')
+            return
+
+        user.devicetoken = deviceid
+        user.save()
+        self.response.out.write('SUCCESS')
+
+    
+        
 
 application = webapp.WSGIApplication([('/', MainPage),
                                       ('/createuser', CreateUser),
@@ -324,6 +405,8 @@ application = webapp.WSGIApplication([('/', MainPage),
 		                      ('/addons', Addons),
 				      (r'/rss/(.*)', RssFeed),
 				      (r'/export/json/(.*)', ExportJson),
+                                      (r'/api/sendtophone', SendToPhone),
+                                      (r'/api/registerdeviceid', RegisterDeviceId),
                                       ], debug=True)
 
 
