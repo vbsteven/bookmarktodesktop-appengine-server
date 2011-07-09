@@ -28,6 +28,7 @@ import md5
 from django.utils import simplejson as json
 from c2dm import C2DM
 from settings import clientAuth, collapseKey
+from urllib import unquote
 
 ## Entities ##
 
@@ -89,6 +90,8 @@ def checkLogin(username=None, password=None):
         return None
     if password == '':
         return None
+
+    password = unquote(password)
     
     users = db.GqlQuery("SELECT * FROM User WHERE username = :1 AND password = :2", username, password)
     if users is None:
