@@ -238,7 +238,8 @@ class RequestToken(webapp.RequestHandler):
         if user is None:
             self.response.out.write('INVALIDLOGIN')
             return
-        self.response.out.write(channel.create_channel(user.username))	
+        #self.response.out.write(channel.create_channel(user.username))	
+        self.response.out.write('CHANNELSDISABLED')
         return
 
 # shows html template for the addon/extension links
